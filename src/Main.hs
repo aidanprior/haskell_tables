@@ -3,7 +3,6 @@
 import Data.List ( delete, sort, sortOn, uncons, transpose, delete, groupBy )
 import Data.Function ( on )
 import Data.Maybe ( isNothing, fromJust )
-import System.Environment ( getArgs )
 import qualified Data.Bifunctor as BF ( first )
 import System.IO.Error ( tryIOError )
 
@@ -217,8 +216,8 @@ exportTablesAndLookup fp tbls = do
     tbls |> createLookup |> unlines |> writeFile ("Lookup-" ++ fp) 
     tbls |> createTables |> unlines |> writeFile ("Tables-" ++ fp)
 
-run :: RandomGen gen => Int -> gen -> IO ()
-run weekNumber seedNumber = do
+run :: RandomGen gen => gen -> IO ()
+run seedNumber = do
     mbCflcts <- importConflicts "Conflicts.csv"
     (simple_counselors, aSlotLocs) <- importCounselorTables "Counselor Tables.csv"
     simple_aides <- importAides "Aides.csv"
@@ -230,10 +229,9 @@ run weekNumber seedNumber = do
             ads = loadConflicts cflcts simple_aides
             cmprs = loadConflicts cflcts simple_campers
             in
-            setupTables cflcts simple_counselors aSlotLocs |> seedTables seedNumber ads cmprs |> exportTablesAndLookup ("Week" ++ show weekNumber ++ ".csv")
+            setupTables cflcts simple_counselors aSlotLocs |> seedTables seedNumber ads cmprs |> exportTablesAndLookup ".csv"
 
 main :: IO ()
 main = do
-    weekNumber <- getArgs
     seedNumber <- getStdGen
-    run (read $ head weekNumber) seedNumber
+    run seedNumber
