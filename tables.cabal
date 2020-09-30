@@ -2,13 +2,13 @@ name:                tables
 version:             0.1.0.0
 -- synopsis:
 -- description:
-homepage:            https://github.com/githubuser/tables#readme
+homepage:            https://github.com/aidanprior/haskell_tables#readme
 license:             BSD3
 license-file:        LICENSE
-author:              Author name here
-maintainer:          example@example.com
-copyright:           2020 Author name here
-category:            Web
+author:              Aidan Prior
+maintainer:          priorlyaidan@yahoo.com
+copyright:           2020 Aidan Prior
+category:            CLI
 build-type:          Simple
 cabal-version:       >=1.10
 extra-source-files:  README.md
