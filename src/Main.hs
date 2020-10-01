@@ -5,6 +5,7 @@ import Data.Function ( on )
 import Data.Maybe ( isNothing, fromJust )
 import qualified Data.Bifunctor as BF ( first )
 import System.IO.Error ( tryIOError )
+import Data.Foldable ( foldlM )
 
 
 import qualified Data.Map.Strict as Map
@@ -122,33 +123,31 @@ trySeed c@(Camper _ _ _ cflcts) tbl =
 
 trySeed (Counselor n _ _) _ = error $ show n ++ " was attempted to be seeded"
 
-seedPerson :: [Table] -> Person -> Maybe [Table]
-seedPerson tbls p = 
-    let f = case p of Camper {} -> cSlots; Aide {} -> aSlots; Counselor n _ _ -> error $ show n ++ " was attempted to be seeded"
-        attempts = tbls |> sortOn (f) |> reverse |> map (trySeed p) |> dropWhile isNothing
+seedPerson :: RandomGen gen => (gen, [Table]) -> Person -> Maybe (gen, [Table])
+seedPerson (g, unshuffled) p = 
+    let 
+        (g1, g2) = split g
+        tbls = shuffle'' unshuffled g1
+        f = case p of Camper {} -> cSlots; Aide {} -> aSlots; Counselor n _ _ -> error $ show n ++ " was attempted to be seeded"
+        attempts = tbls |> sortOn f |> reverse |> map (trySeed p) |> dropWhile isNothing
     in
         if null attempts 
             then Nothing 
             else 
                 let tbl = attempts |> head |> fromJust
                     oldTbl = tbls |> filter (num .> (==) (num tbl) ) |> head
-                in Just $ replace oldTbl tbl tbls
-
-shuffleFoldl :: RandomGen gen => gen -> (b -> a -> b) -> b -> [a] -> b
-shuffleFoldl _ _ b [] = b
-shuffleFoldl g f b xs =
-    let (g1, g2) = split g
-        x:rest = shuffle'' xs g1 
-    in shuffleFoldl g2 f (f b x) rest
+                in Just (g2, replace oldTbl tbl tbls)
 
 seedTables :: RandomGen gen => gen -> [Person] -> [Person] -> [Table] -> [Table]
 seedTables seed aideList cmprs tbls = 
     let 
         (g1, g2) = seed |> split
-        start = shuffleFoldl g2 (fromJust .> seedPerson) (Just tbls) aideList
-        cmprGroups = cmprs |> sortOn age |> groupBy ((==) `on` age) |> flip shuffle'' g1
+        start = foldlM seedPerson (g1, tbls) aideList
+        cmprGroups = cmprs |> sortOn age |> groupBy ((==) `on` age) |> flip shuffle'' g2
     in
-        foldl (shuffleFoldl g1 (fromJust .> seedPerson)) start cmprGroups |> fromJust
+        case start >>= flip (foldlM (foldlM seedPerson)) cmprGroups >>= (return . snd) of
+            Just outTbls -> outTbls
+            Nothing -> seedTables (split g2 |> snd) aideList cmprs tbls
        
 
 importAides :: FilePath -> IO [Person]
